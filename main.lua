@@ -1,4 +1,3 @@
--- Укради Брейн Рота - Продвинутый байпас античита
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -28,7 +27,6 @@ local states = {
     menuOpen = false
 }
 
-local originalProperties = {}
 local connections = {}
 local bypassMethods = {}
 
@@ -49,7 +47,7 @@ title.Size = UDim2.new(1, 0, 0, 30)
 title.Position = UDim2.new(0, 0, 0, 0)
 title.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.Text = "Укради Брейн Рота v2.0"
+title.Text = "Улучшенный Укради Брейн Рота"
 title.Font = Enum.Font.SourceSansBold
 title.Parent = mainFrame
 
@@ -135,9 +133,7 @@ createFeatureButton("Fly", settings.flyKey, function()
 end)
 
 bypassMethods.enableFloat = function()
-    if connections.float then
-        connections.float:Disconnect()
-    end
+    if connections.float then connections.float:Disconnect() end
     
     local floatPart = Instance.new("Part")
     floatPart.Size = Vector3.new(8, 0.3, 8)
@@ -182,11 +178,24 @@ bypassMethods.disableFloat = function()
 end
 
 bypassMethods.enableSpeed = function()
-    originalProperties.walkSpeed = Humanoid.WalkSpeed
-    originalProperties.jumpPower = Humanoid.JumpPower
+    if connections.speed then connections.speed:Disconnect() end
     
-    Humanoid.WalkSpeed = originalProperties.walkSpeed * settings.speedMultiplier
-    Humanoid.JumpPower = originalProperties.jumpPower * 1.5
+    local massBypass = RunService.Heartbeat:Connect(function()
+        if not HumanoidRootPart or not HumanoidRootPart.Parent then return end
+        
+        if HumanoidRootPart.Velocity.Magnitude > 0 then
+            local moveDir = Humanoid.MoveDirection
+            if moveDir.Magnitude > 0 then
+                HumanoidRootPart.Velocity = Vector3.new(
+                    moveDir.X * settings.speedMultiplier * 10,
+                    HumanoidRootPart.Velocity.Y,
+                    moveDir.Z * settings.speedMultiplier * 10
+                )
+            end
+        end
+    end)
+    
+    connections.speed = massBypass
     
     local speedPart = Instance.new("Part")
     speedPart.Size = Vector3.new(6, 0.2, 6)
@@ -199,11 +208,7 @@ bypassMethods.enableSpeed = function()
     speedPart.Name = "SpeedPart_" .. math.random(1000,9999)
     speedPart.Parent = workspace
     
-    if connections.speed then
-        connections.speed:Disconnect()
-    end
-    
-    connections.speed = RunService.Heartbeat:Connect(function()
+    local speedConnection = RunService.Heartbeat:Connect(function()
         if speedPart and speedPart.Parent and HumanoidRootPart and HumanoidRootPart.Parent then
             speedPart.Position = Vector3.new(
                 HumanoidRootPart.Position.X,
@@ -212,19 +217,16 @@ bypassMethods.enableSpeed = function()
             )
         end
     end)
+    
+    table.insert(connections, speedConnection)
 end
 
 bypassMethods.disableSpeed = function()
-    if originalProperties.walkSpeed then
-        Humanoid.WalkSpeed = originalProperties.walkSpeed
-    end
-    if originalProperties.jumpPower then
-        Humanoid.JumpPower = originalProperties.jumpPower
-    end
     if connections.speed then
         connections.speed:Disconnect()
         connections.speed = nil
     end
+    
     for _, obj in pairs(workspace:GetChildren()) do
         if obj.Name:find("SpeedPart_") then
             obj:Destroy()
@@ -233,27 +235,21 @@ bypassMethods.disableSpeed = function()
 end
 
 bypassMethods.enableNoclip = function()
-    if connections.noclip then
-        connections.noclip:Disconnect()
-    end
+    if connections.noclip then connections.noclip:Disconnect() end
     
-    originalProperties.collision = {}
-    for _, part in pairs(Character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            originalProperties.collision[part] = part.CanCollide
-            part.CanCollide = false
-        end
-    end
-    
-    connections.noclip = RunService.Stepped:Connect(function()
-        if states.noclipEnabled and Character then
-            for _, part in pairs(Character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
+    local noclipConnection = RunService.Stepped:Connect(function()
+        if not Character then return end
+        
+        for _, part in pairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+                part.Velocity = Vector3.new()
+                part.RotVelocity = Vector3.new()
             end
         end
     end)
+    
+    connections.noclip = noclipConnection
 end
 
 bypassMethods.disableNoclip = function()
@@ -261,19 +257,10 @@ bypassMethods.disableNoclip = function()
         connections.noclip:Disconnect()
         connections.noclip = nil
     end
-    if originalProperties.collision then
-        for part, canCollide in pairs(originalProperties.collision) do
-            if part and part.Parent then
-                part.CanCollide = canCollide
-            end
-        end
-    end
 end
 
 bypassMethods.enableFly = function()
-    if connections.fly then
-        connections.fly:Disconnect()
-    end
+    if connections.fly then connections.fly:Disconnect() end
     
     local flyBV = Instance.new("BodyVelocity")
     flyBV.Velocity = Vector3.new(0, 0, 0)
@@ -326,10 +313,7 @@ bypassMethods.disableFly = function()
 end
 
 local function stealBrainRot()
-    local brainRotModel = workspace:FindFirstChild("BrainRot")
-    if not brainRotModel then
-        brainRotModel = workspace:FindFirstChild("BrainRoot")
-    end
+    local brainRotModel = workspace:FindFirstChild("BrainRot") or workspace:FindFirstChild("BrainRoot")
     
     if brainRotModel then
         local humanoid = brainRotModel:FindFirstChildOfClass("Humanoid")
@@ -447,7 +431,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
-print("Укради Брейн Рота загружен!")
+print("Улучшенный Укради Брейн Рота загружен!")
 print("Горячие клавиши:")
 print("Insert - Меню")
 print("F - Float (пластина + подъем)")
